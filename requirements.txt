@@ -1,0 +1,12 @@
+# Core dependencies
+pandas
+openpyxl
+pytest
+playwright
+pytest-playwright
+rich
+python-dotenv
+pyautogui
+pytest-html
+pytest-html-report
+deep-translator
