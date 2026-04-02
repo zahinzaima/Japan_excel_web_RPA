@@ -24,11 +24,20 @@ def validate_row(excel_row: dict, web_data: dict):
                 f"Column C mismatch → Web: {web_ingredient}"
             )
 
-    # Column H → Brand (Excel part must exist in website)
-    if not brand_match(excel_row.get("H"), web_data.get("brand")):
-        mismatches.append(
-            f"Column H mismatch → Web: {web_data.get('brand')}"
-        )
+
+   # Column H → Brand (Flexible Match)
+    excel_brand = excel_row.get("H")
+    web_brand = web_data.get("brand")
+
+    if web_brand:
+        # Try strict brand match first
+        if not brand_match(excel_brand, web_brand):
+            # Fallback to flexible match
+            if not flexible_match(excel_brand, web_brand):
+                mismatches.append(
+                    f"Column H mismatch → Web: {web_brand}"
+                )
+
 
     # Column I → Company (normalize bracket/dash)
     if not company_match(excel_row.get("I"), web_data.get("company")):

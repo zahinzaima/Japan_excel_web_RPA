@@ -47,9 +47,23 @@ def normalize_text(value):
     value = value.replace("―", "-")
     value = value.replace("-", "") 
 
-    # Remove spaces (both half & full width)
-    value = value.replace("　", " ")
-    value = value.replace(" ", "")
+    # Normalize bracket styles (full-width and half-width)
+    value = value.replace("〈", "")
+    value = value.replace("〉", "")
+    value = value.replace("＜", "")
+    value = value.replace("＞", "")
+    value = value.replace("<", "")   
+    value = value.replace(">", "")   
+
+
+
+    # Remove manufacturer brackets and quotes
+    value = re.sub(r"[（(][^）)]*[）)]", "", value)  # remove （山善）
+    value = re.sub(r"[「][^」]*[」]", "", value)    # remove 「ヤマゼン」
+
+
+    # Remove generic label
+    value = value.replace("後発品", "")
 
     # Remove formulation suffixes
     value = value.replace("配合剤", "")
@@ -60,20 +74,9 @@ def normalize_text(value):
     # Normalize gamma representation (domain-specific rule)
     value = value.replace("ガンマー", "ガンマ")
 
-
-    # Normalize bracket styles
-    value = value.replace("〈", "")
-    value = value.replace("〉", "")
-    value = value.replace("＜", "")
-    value = value.replace("＞", "")
-
-    # Remove manufacturer brackets and quotes
-    value = re.sub(r"[（(][^）)]*[）)]", "", value)  # remove （山善）
-    value = re.sub(r"[「][^」]*[」]", "", value)    # remove 「ヤマゼン」
-
-    # Remove generic label
-    value = value.replace("後発品", "")
-
+    # Remove spaces (both half & full width)
+    value = value.replace("　", " ")
+    value = value.replace(" ", "")
 
     # Lowercase
     value = value.strip().lower()
@@ -84,38 +87,12 @@ def normalize_text(value):
 # =========================================
 # BRAND MATCH
 # =========================================
-'''def brand_match(excel_value, web_value):
-
-    excel_norm = normalize_text(excel_value)
-    web_norm = normalize_text(web_value)
-
-    return web_norm.startswith(excel_norm)'''
-
-
-# =========================================
-# BRAND MATCH
-# =========================================
 def brand_match(excel_value, web_value):
 
-    if not excel_value or not web_value:
-        return False
-
     excel_norm = normalize_text(excel_value)
     web_norm = normalize_text(web_value)
 
-    # Exact match
-    if excel_norm == web_norm:
-        return True
-
-    # Prefix match
-    if web_norm.startswith(excel_norm):
-        return True
-
-    # Flexible containment match
-    if excel_norm in web_norm or web_norm in excel_norm:
-        return True
-
-    return False
+    return web_norm.startswith(excel_norm)
 
 
 # =========================================
