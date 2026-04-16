@@ -7,6 +7,52 @@ from openpyxl.styles import PatternFill
 from pathlib import Path
 
 
+# 🔹 Column Mapping (JP + EN support)
+COLUMN_MAPPING = {
+    "薬価基準収載医薬品コード": [
+        "薬価基準収載医薬品コード",
+        "薬価基準収載医薬品コード (YJ Code)",
+        "YJ Code",
+        "Drug price standard listed drug code"
+    ],
+    "成分名": [
+        "成分名",
+        "Ingredient name"
+    ],
+    "品名": [
+        "品名",
+        "Product name"
+    ],
+    "メーカー名": [
+        "メーカー名",
+        "Manufacture name"
+    ],
+    "薬価": [
+        "薬価",
+        "Drug price"
+    ]
+}
+
+
+
+def normalize_columns(df):
+
+    new_columns = {}
+
+    for standard_col, variations in COLUMN_MAPPING.items():
+        for col in df.columns:
+            col_clean = col.strip().lower()
+
+            for variation in variations:
+                if col_clean == variation.strip().lower():
+                    new_columns[col] = standard_col
+                    break
+
+    df = df.rename(columns=new_columns)
+
+    return df
+
+
 # 🔹 Read ALL sheets
 def read_excel(limit=None):
 
@@ -26,6 +72,7 @@ def read_excel(limit=None):
         print(f"🔎 Reading sheet: {sheet}")
 
         df = pd.read_excel(file_path, sheet_name=sheet)
+        df = normalize_columns(df)
 
         if df.empty:
             print(f"⚠ Sheet '{sheet}' is empty. Skipping.")
