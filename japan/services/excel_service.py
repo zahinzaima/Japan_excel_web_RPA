@@ -114,11 +114,11 @@ def save_excel(all_sheets_dict, output_file, format_file=False):
 
         headers = [cell.value for cell in ws[1]]
 
-        if "Validation_Remarks" not in headers or "Web_Status" not in headers:
+        if "validation_remarks" not in headers or "web_status" not in headers:
             continue
 
-        remarks_col = headers.index("Validation_Remarks") + 1
-        status_col = headers.index("Web_Status") + 1
+        remarks_col = headers.index("validation_remarks") + 1
+        status_col = headers.index("web_status") + 1
 
         for row in range(2, ws.max_row + 1):
             remarks_cell = ws.cell(row=row, column=remarks_col)
@@ -143,12 +143,12 @@ def save_excel(all_sheets_dict, output_file, format_file=False):
 def ensure_validation_columns(df):
 
     new_cols = [
-        "Validation_Remarks",
-        "Web_Status",
-        "Ingredient",
-        "Brand_Dosage",
-        "Manufacture_name",
-        "ATC_Code"
+        "validation_remarks",
+        "web_status",
+        "ingredient",
+        "brand_dosage",
+        "manufacture_name",
+        "atc_code"
     ]
 
     for col in new_cols:

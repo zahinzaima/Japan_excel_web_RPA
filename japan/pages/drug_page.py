@@ -101,9 +101,9 @@ class DrugPage:
         )
 
         if ingredient_locator.count() > 0:
-            result["Ingredient"] = ingredient_locator.first.inner_text().strip()
+            result["ingredient"] = ingredient_locator.first.inner_text().strip()
         else:
-            result["Ingredient"] = ""
+            result["ingredient"] = ""
 
         # 欧文一般名 (European common name)
         ingredient_en_locator = self.page.locator(
@@ -111,9 +111,9 @@ class DrugPage:
         )
 
         if ingredient_en_locator.count() > 0:
-            result["Ingredient_English"] = ingredient_en_locator.first.inner_text().strip()
+            result["ingredient_english"] = ingredient_en_locator.first.inner_text().strip()
         else:
-            result["Ingredient_English"] = ""
+            result["ingredient_english"] = ""
 
         # -------------------------
         # 製剤名 (Formulation)
@@ -123,9 +123,9 @@ class DrugPage:
         )
 
         if seizai_locator.count() > 0:
-            result["Formulation"] = seizai_locator.inner_text().strip()
+            result["formulation"] = seizai_locator.inner_text().strip()
         else:
-            result["Formulation"] = ""
+            result["formulation"] = ""
 
         # ATCコード (ATC code)
         atc_locator = self.page.locator(
@@ -133,9 +133,9 @@ class DrugPage:
         )
 
         if atc_locator.count() > 0:
-            result["ATC_Code"] = atc_locator.first.inner_text().strip()
+            result["atc_code"] = atc_locator.first.inner_text().strip()
         else:
-            result["ATC_Code"] = ""
+            result["atc_code"] = ""
 
 
         rows = self.page.locator("css=table.product_info tbody tr")

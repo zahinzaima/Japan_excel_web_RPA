@@ -16,7 +16,7 @@ def validate_row(excel_row: dict, web_data: dict):
     mismatches = []
 
     # Column C → Ingredient (Flexible Match)
-    web_ingredient = web_data.get("Ingredient")
+    web_ingredient = web_data.get("ingredient")
 
     if web_ingredient:  # Only validate if Ingredient exists
         if not flexible_match(excel_row.get("C"), web_ingredient):

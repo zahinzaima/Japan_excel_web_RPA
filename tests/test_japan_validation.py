@@ -46,7 +46,7 @@ def test_japan_validation(page):
 
             for index, row in df.iterrows():
 
-                if str(row.get("Web_Status", "")).strip():
+                if str(row.get("web_status", "")).strip():
                     continue  # Skip already processed rows (useful for resuming after errors)
 
                 total_rows += 1
@@ -67,8 +67,8 @@ def test_japan_validation(page):
                         drug_page.search_drug(drug_id)
                         # No result page
                         if drug_page.is_no_result_page():
-                            df.at[index, "Web_Status"] = "Not Found"
-                            df.at[index, "Validation_Remarks"] = ""
+                            df.at[index, "web_status"] = "Not Found"
+                            df.at[index, "validation_remarks"] = ""
                             not_found_count += 1
                             logger.warning(f"{drug_id} → NOT FOUND")
                             break
@@ -77,8 +77,8 @@ def test_japan_validation(page):
                         found = drug_page.open_matching_result()
 
                         if not found:
-                            df.at[index, "Web_Status"] = "Not Found"
-                            df.at[index, "Validation_Remarks"] = ""
+                            df.at[index, "web_status"] = "Not Found"
+                            df.at[index, "validation_remarks"] = ""
                             not_found_count += 1
                             logger.warning(f"{drug_id} → NOT FOUND")
                             break
@@ -95,8 +95,8 @@ def test_japan_validation(page):
                             "M": row["薬価"],
                         }, web_data)
 
-                        df.at[index, "Web_Status"] = status
-                        df.at[index, "Validation_Remarks"] = remarks
+                        df.at[index, "web_status"] = status
+                        df.at[index, "validation_remarks"] = remarks
 
                         # ===============================
                         # Additional columns logic
@@ -114,9 +114,9 @@ def test_japan_validation(page):
                             # ===============================
 
                             excel_c = row.get("成分名", "")
-                            web_ingredient_jp = web_data.get("Ingredient", "")
-                            web_ingredient_en = web_data.get("Ingredient_English", "")
-                            web_formulation = web_data.get("Formulation", "")
+                            web_ingredient_jp = web_data.get("ingredient", "")
+                            web_ingredient_en = web_data.get("ingredient_english", "")
+                            web_formulation = web_data.get("formulation", "")
 
                             ingredient_value = ""
 
@@ -126,7 +126,7 @@ def test_japan_validation(page):
                             # Populate if 欧文一般名 exists (independent of match)
                             # ===============================
 
-                            web_ingredient_en = web_data.get("Ingredient_English", "")
+                            web_ingredient_en = web_data.get("ingredient_english", "")
 
                             if web_ingredient_en:
                                 ingredient_value = "・".join(
@@ -135,7 +135,7 @@ def test_japan_validation(page):
                             else:
                                 ingredient_value = ""
 
-                            df.at[index, "Ingredient"] = ingredient_value
+                            df.at[index, "ingredient"] = ingredient_value
                             
                             # ===============================
                             # Column S → Brand_Dosage
@@ -145,30 +145,30 @@ def test_japan_validation(page):
                             web_brand_en = web_data.get("brand_en", "")
 
                             if web_brand_en:
-                                df.at[index, "Brand_Dosage"] = web_brand_en.strip()
+                                df.at[index, "brand_dosage"] = web_brand_en.strip()
                             else:
-                                df.at[index, "Brand_Dosage"] = ""
+                                df.at[index, "brand_dosage"] = ""
 
                             # T column → Manufacture name (only if I column matches)
                             if company_match(row["メーカー名"], web_data.get("company")):
                                 jp_company = web_data.get("company", "")
                                 en_company = translate_company(jp_company)
-                                df.at[index, "Manufacture_name"] = en_company
+                                df.at[index, "manufacture_name"] = en_company
                             else:
-                                df.at[index, "Manufacture_name"] = ""
+                                df.at[index, "manufacture_name"] = ""
 
                             #jp_company = web_data.get("company", "")
                             #en_company = translate_company(jp_company)
-                            #df.at[index, "Manufacture_name"] = en_company
+                            #df.at[index, "manufacture_name"] = en_company
 
                             # U column → ATC code 
-                            df.at[index, "ATC_Code"] = web_data.get("ATC_Code", "")
+                            df.at[index, "atc_code"] = web_data.get("atc_code", "")
 
                         else:
-                            df.at[index, "Ingredient"] = ""
-                            df.at[index, "Brand_Dosage"] = ""
-                            df.at[index, "Manufacture_name"] = ""
-                            df.at[index, "ATC_Code"] = ""
+                            df.at[index, "ingredient"] = ""
+                            df.at[index, "brand_dosage"] = ""
+                            df.at[index, "manufacture_name"] = ""
+                            df.at[index, "atc_code"] = ""
                         # ===============================
 
                         if status == "Found" and remarks == "All Match":
@@ -191,8 +191,8 @@ def test_japan_validation(page):
                         if attempt == max_retry - 1:
                             error_count += 1
                             sheet_error += 1
-                            df.at[index, "Web_Status"] = "Error"
-                            df.at[index, "Validation_Remarks"] = str(row_error)
+                            df.at[index, "web_status"] = "Error"
+                            df.at[index, "validation_remarks"] = str(row_error)
                             logger.exception(f"{drug_id} → FINAL ERROR")
 
                         else:
