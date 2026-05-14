@@ -5,7 +5,7 @@ from datetime import datetime
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-INPUT_FILE = "data/input/Japan5.xlsx"
+INPUT_FILE = "data/input/Japan.xlsx"
 
 #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 #OUTPUT_FILE = f"data/output/Japan_validated_{timestamp}.xlsx"
