@@ -1,117 +1,142 @@
-from wsgiref import headers
-
-import pandas as pd
-from japan import config
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
 from pathlib import Path
 
+import pandas as pd
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
 
-# 🔹 Column Mapping (JP + EN support)
+from japan import config
+
+
 COLUMN_MAPPING = {
     "薬価基準収載医薬品コード": [
         "薬価基準収載医薬品コード",
         "薬価基準収載医薬品コード (YJ Code)",
         "YJ Code",
-        "Drug price standard listed drug code"
+        "Drug price standard listed drug code",
     ],
     "成分名": [
         "成分名",
-        "Ingredient name"
+        "Ingredient name",
     ],
     "品名": [
         "品名",
-        "Product name"
+        "Product name",
     ],
     "メーカー名": [
         "メーカー名",
-        "Manufacture name"
+        "Manufacture name",
     ],
     "薬価": [
         "薬価",
-        "Drug price"
-    ]
+        "Drug price",
+    ],
 }
 
+VALIDATION_COLUMNS = [
+    "validation_remarks",
+    "web_status",
+    "ingredient",
+    "brand_dosage",
+    "manufacture_name",
+    "atc_code",
+]
 
 
 def normalize_columns(df):
-
     new_columns = {}
 
     for standard_col, variations in COLUMN_MAPPING.items():
         for col in df.columns:
-            col_clean = col.strip().lower()
+            col_clean = str(col).strip().lower()
 
             for variation in variations:
                 if col_clean == variation.strip().lower():
                     new_columns[col] = standard_col
                     break
 
-    df = df.rename(columns=new_columns)
+    return df.rename(columns=new_columns)
+
+
+def ensure_validation_columns(df):
+    for col in VALIDATION_COLUMNS:
+        if col not in df.columns:
+            df[col] = ""
 
     return df
 
 
-# 🔹 Read ALL sheets
-def read_excel(limit=None):
+def read_workbook(file_path=None, limit=None):
+    workbook_path = Path(file_path or config.INPUT_FILE)
 
-    file_path = Path(config.INPUT_FILE)
+    if not workbook_path.exists():
+        raise FileNotFoundError(f"Input file not found: {workbook_path}")
 
-    if not file_path.exists():
-        raise FileNotFoundError(f"Input file not found: {file_path}")
-
-    excel_file = pd.ExcelFile(file_path)
-
-    print(f"📂 Found sheets: {excel_file.sheet_names}")
-
+    excel_file = pd.ExcelFile(workbook_path)
     all_sheets = {}
 
     for sheet in excel_file.sheet_names:
-
-        print(f"🔎 Reading sheet: {sheet}")
-
-        df = pd.read_excel(file_path, sheet_name=sheet)
-        df = normalize_columns(df)
+        df = pd.read_excel(workbook_path, sheet_name=sheet, keep_default_na=False)
+        df = ensure_validation_columns(normalize_columns(df))
 
         if df.empty:
-            print(f"⚠ Sheet '{sheet}' is empty. Skipping.")
             continue
-
-        print(f"📊 Total rows found: {len(df)}")
 
         if limit:
             df = df.head(limit)
-            print(f"🚀 Processing first {len(df)} rows")
 
         all_sheets[sheet] = df
 
     if not all_sheets:
-        raise ValueError("❌ All sheets are empty in the Excel file.")
+        raise ValueError("All sheets are empty in the Excel file.")
 
     return all_sheets
 
 
-# 🔹 Save multiple sheets
-def save_excel(all_sheets_dict, output_file, format_file=False):
+def read_excel(limit=None):
+    return read_workbook(limit=limit)
 
-    with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
+
+def read_checkpoint_csv(csv_path):
+    df = pd.read_csv(csv_path, keep_default_na=False)
+    return ensure_validation_columns(normalize_columns(df))
+
+
+def save_checkpoint_csv(df, csv_path):
+    csv_path = Path(csv_path)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+
+
+def export_to_excel(all_sheets_dict, output_file, format_file=False):
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         for sheet_name, df in all_sheets_dict.items():
             df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-    if not format_file:
-        print(f"💾 Auto-saved: {output_file}")
-        return
+    if format_file:
+        format_excel_output(output_path)
 
-    # Apply formatting sheet by sheet
-    wb = load_workbook(output_file)
+    return output_path
 
-    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
 
+def format_excel_output(output_file):
+    output_path = Path(output_file)
+    wb = load_workbook(output_path)
+
+    green_fill = PatternFill(
+        start_color="C6EFCE",
+        end_color="C6EFCE",
+        fill_type="solid",
+    )
+    red_fill = PatternFill(
+        start_color="FFC7CE",
+        end_color="FFC7CE",
+        fill_type="solid",
+    )
 
     for ws in wb.worksheets:
-
         headers = [cell.value for cell in ws[1]]
 
         if "validation_remarks" not in headers or "web_status" not in headers:
@@ -134,25 +159,8 @@ def save_excel(all_sheets_dict, output_file, format_file=False):
             elif status_cell.value == "Not Found":
                 status_cell.fill = red_fill
 
-            
-    wb.save(output_file)
-    print(f"\n✅ Final Excel saved with formatting: {output_file}")
+    wb.save(output_path)
 
 
-# 🔹 Ensure validation columns
-def ensure_validation_columns(df):
-
-    new_cols = [
-        "validation_remarks",
-        "web_status",
-        "ingredient",
-        "brand_dosage",
-        "manufacture_name",
-        "atc_code"
-    ]
-
-    for col in new_cols:
-        if col not in df.columns:
-            df[col] = ""
-
-    return df
+def save_excel(all_sheets_dict, output_file, format_file=False):
+    return export_to_excel(all_sheets_dict, output_file, format_file=format_file)

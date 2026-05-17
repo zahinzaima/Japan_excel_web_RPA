@@ -1,80 +1,81 @@
+import atexit
 import json
-import os
 import time
+from pathlib import Path
+
 from deep_translator import GoogleTranslator
 
-# ===============================
-# CACHE FILES
-# ===============================
-COMPANY_CACHE_FILE = "company_translation_cache.json"
 
-# ===============================
-# LOAD CACHE
-# ===============================
+COMPANY_CACHE_FILE = Path("company_translation_cache.json")
+
+
 def load_cache(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+    cache_path = Path(file_path)
+    if cache_path.exists():
+        return json.loads(cache_path.read_text(encoding="utf-8"))
     return {}
 
 
 def save_cache(cache, file_path):
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(cache, f, ensure_ascii=False, indent=4)
+    cache_path = Path(file_path)
+    cache_path.write_text(
+        json.dumps(cache, ensure_ascii=False, indent=4),
+        encoding="utf-8",
+    )
 
 
 company_cache = load_cache(COMPANY_CACHE_FILE)
-
-# Single translator instance (better performance)
+dirty_cache_entries = 0
 translator = GoogleTranslator(source="ja", target="en")
 
 
-# ===============================
-# SAFE TRANSLATE CORE
-# ===============================
-def _safe_translate(text, cache_dict, cache_file, max_retry=3):
+def flush_translation_cache(force=False):
+    global dirty_cache_entries
 
+    if dirty_cache_entries == 0 and not force:
+        return
+
+    save_cache(company_cache, COMPANY_CACHE_FILE)
+    dirty_cache_entries = 0
+
+
+def _remember_translation(text, translated):
+    global dirty_cache_entries
+
+    company_cache[text] = translated
+    dirty_cache_entries += 1
+
+    if dirty_cache_entries >= 25:
+        flush_translation_cache()
+
+
+def _safe_translate(text, cache_dict, max_retry=3):
     if not text:
         return ""
 
     text = text.strip()
 
-    # 1️⃣ Cache check
     if text in cache_dict:
         return cache_dict[text]
 
-    # 2️⃣ Retry mechanism
-    for attempt in range(max_retry):
+    for _ in range(max_retry):
         try:
             translated = translator.translate(text)
 
             if translated:
-
-                # Optional: Capitalize first letter
                 translated = translated.strip()
                 translated = translated[0].upper() + translated[1:]
-
-                cache_dict[text] = translated
-                save_cache(cache_dict, cache_file)
-
+                _remember_translation(text, translated)
                 time.sleep(0.2)
                 return translated
-
         except Exception:
             time.sleep(1)
 
-    # ❌ If all retries fail → DO NOT store empty
     return ""
 
 
-# ===============================
-# PUBLIC FUNCTIONS
-# ===============================
 def translate_company(company_name, max_retry=3):
-    return _safe_translate(
-        company_name,
-        company_cache,
-        COMPANY_CACHE_FILE,
-        max_retry
-    )
+    return _safe_translate(company_name, company_cache, max_retry=max_retry)
 
+
+atexit.register(flush_translation_cache, force=True)

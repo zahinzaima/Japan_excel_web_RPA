@@ -16,7 +16,10 @@ from pathlib import Path
 from typing import Optional, Callable
 
 import pytest
-import pyautogui
+try:
+    import pyautogui
+except Exception:  # pragma: no cover - fallback for headless test environments
+    pyautogui = None
 
 from playwright.sync_api import (
     Playwright,
@@ -38,7 +41,10 @@ VIDEOS_DIR = ARTIFACTS_DIR / "videos"
 TRACES_DIR = ARTIFACTS_DIR / "traces"
 SCREENSHOTS_DIR = ARTIFACTS_DIR / "screenshots"
 
-screen_width, screen_height = pyautogui.size()
+if pyautogui is not None:
+    screen_width, screen_height = pyautogui.size()
+else:
+    screen_width, screen_height = (1600, 900)
 print(f"Artifacts path: {ARTIFACTS_DIR}")
 print(f"Running on screen size: {screen_width}x{screen_height}")
 
@@ -299,5 +305,4 @@ def pytest_runtest_call(item):
         errors = getattr(pytest_check, "_errors", [])
         for e in errors:
             print(f"🔸 Soft check failure in {item.name}: {e}")
-
 

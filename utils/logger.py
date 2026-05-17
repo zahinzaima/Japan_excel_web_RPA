@@ -1,14 +1,14 @@
 import logging
-import os
 from datetime import datetime
+
+from japan import config
 
 
 def get_logger():
-
-    os.makedirs("logs", exist_ok=True)
+    config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = f"logs/Japan_validation_{timestamp}.log"
+    log_file = config.LOGS_DIR / f"Japan_validation_{timestamp}.log"
 
     logger = logging.getLogger("JapanLogger")
     logger.setLevel(logging.INFO)
