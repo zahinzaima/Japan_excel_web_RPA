@@ -12,6 +12,7 @@ from japan.services.checkpoint_service import (
 )
 from japan.services.excel_service import export_to_excel
 from japan.services.normalization_service import company_match
+from japan.services.screenshot_service import capture_product_screenshot
 from japan.services.translation_service import flush_translation_cache, translate_company
 from japan.services.validation_service import validate_row
 from utils.logger import get_logger
@@ -206,6 +207,8 @@ def _process_row(df, index, row, drug_page, logger):
                 _set_not_found(df, index)
                 logger.warning("%s → NOT FOUND", drug_id)
                 return "Not Found"
+
+            capture_product_screenshot(drug_page.page, drug_id, logger=logger)
 
             web_data = drug_page.extract_details(drug_id)
             status, remarks = validate_row(
