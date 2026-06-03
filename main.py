@@ -30,7 +30,8 @@ def main(argv=None):
     summary = run_validation(mode=mode, checkpoint_ref=checkpoint_ref)
     print(
         "Completed {mode}: processed={processed}, all_match={all_match}, mismatched={mismatched}, "
-        "not_found={not_found}, errors={errors}, output={output_file}".format(**summary)
+        "not_found={not_found}, errors={errors}, screenshots_uploaded={screenshots_uploaded}, "
+        "output={output_file}".format(**summary)
     )
     return 0
 

@@ -1,6 +1,5 @@
 import io
 import re
-from datetime import datetime
 from pathlib import Path
 
 from japan import config
@@ -11,23 +10,37 @@ except ImportError:  # pragma: no cover - Pillow is optional at import time
     Image = None
 
 
-_UNSAFE_FILENAME = re.compile(r"[^0-9A-Za-z._-]+")
+# Characters that are unsafe in a path segment. Kept deliberately permissive so
+# the descriptive "Medicine=[...]_Company=[...]" filename stays human-readable,
+# matching the naming used by the other country RPA pipelines.
+_INVALID_FS_CHARS = re.compile(r'[/\\:*?"<>|\r\n\t]+')
 
 
-def _safe_name(drug_id):
-    name = _UNSAFE_FILENAME.sub("_", str(drug_id).strip())
-    return name or "unknown"
+def _safe_segment(value, fallback="UNKNOWN", max_len=120):
+    text = _INVALID_FS_CHARS.sub("_", str(value or "").strip())
+    text = re.sub(r"\s+", " ", text).strip()
+    text = text[:max_len].strip()
+    return text or fallback
 
 
-def _target_path(drug_id, when=None, base_dir=None):
-    when = when or datetime.now()
-    base_dir = Path(base_dir) if base_dir else config.SCREENSHOTS_DIR
-    month_dir = base_dir / when.strftime("%Y") / when.strftime("%m")
-    return month_dir / f"{_safe_name(drug_id)}.png"
+def build_screenshot_path(drug_id, brand, company, base_dir):
+    """Return the local path for a product screenshot.
+
+    Layout (relative to ``base_dir``):
+        <DRUG_ID>/Medicine=[<brand>]_Company=[<company>].png
+
+    ``DRUG_ID`` groups every screenshot captured for a single YJ code, and the
+    filename records the brand and company found on the website.
+    """
+    group = _safe_segment(drug_id)
+    medicine = _safe_segment(brand, fallback=group)
+    company_name = _safe_segment(company, fallback="UNKNOWN")
+    filename = _safe_segment(f"Medicine=[{medicine}]_Company=[{company_name}]") + ".png"
+    return Path(base_dir) / group / filename
 
 
-def capture_product_screenshot(page, drug_id, logger=None, base_dir=None):
-    """Save a 720px-wide screenshot of the current page under screenshots/YYYY/MM/.
+def capture_product_screenshot(page, drug_id, brand, company, base_dir, logger=None):
+    """Save a 720px-wide screenshot of the current product page.
 
     Screenshots are a side artifact, so any failure here is logged and swallowed
     rather than allowed to break the validation run. Returns the saved Path or None.
@@ -36,7 +49,7 @@ def capture_product_screenshot(page, drug_id, logger=None, base_dir=None):
         return None
 
     try:
-        path = _target_path(drug_id, base_dir=base_dir)
+        path = build_screenshot_path(drug_id, brand, company, base_dir)
         path.parent.mkdir(parents=True, exist_ok=True)
 
         image_bytes = page.screenshot(full_page=True)

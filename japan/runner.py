@@ -1,4 +1,6 @@
 import time
+import uuid
+from datetime import datetime
 
 from japan import config
 from japan.pages.drug_page import DrugPage
@@ -11,6 +13,7 @@ from japan.services.checkpoint_service import (
     save_sheet_checkpoint,
 )
 from japan.services.excel_service import export_to_excel
+from japan.services.gcs_service import upload_screenshots
 from japan.services.normalization_service import company_match
 from japan.services.screenshot_service import capture_product_screenshot
 from japan.services.translation_service import flush_translation_cache, translate_company
@@ -56,6 +59,12 @@ def run_validation(
     logger = logger or get_logger()
     autosave_every = autosave_every or config.CHECKPOINT_SAVE_INTERVAL
 
+    run_started_at = datetime.now()
+    trace_id = uuid.uuid4().hex
+    run_year = run_started_at.strftime("%Y")
+    run_month = run_started_at.strftime("%m")
+    run_screenshots_dir = config.SCREENSHOTS_DIR / trace_id
+
     checkpoint_dir, metadata, sheets = _load_run_state(
         mode=mode,
         checkpoint_ref=checkpoint_ref,
@@ -77,6 +86,8 @@ def run_validation(
         "not_found": 0,
         "errors": 0,
         "runtime_seconds": 0.0,
+        "trace_id": trace_id,
+        "screenshots_uploaded": 0,
     }
 
     browser_context = browser_factory() if browser_factory else runtime_page()
@@ -117,7 +128,9 @@ def run_validation(
                     )
 
                     try:
-                        result = _process_row(df, index, row, drug_page, logger)
+                        result = _process_row(
+                            df, index, row, drug_page, logger, run_screenshots_dir
+                        )
                     except Exception as row_error:
                         summary["errors"] += 1
                         sheet_error_count += 1
@@ -145,6 +158,16 @@ def run_validation(
         flush_translation_cache(force=True)
         save_all_checkpoints(checkpoint_dir, metadata, sheets)
         export_to_excel(sheets, output_file, format_file=True)
+        try:
+            summary["screenshots_uploaded"] = upload_screenshots(
+                screenshots_dir=run_screenshots_dir,
+                trace_id=trace_id,
+                year=run_year,
+                month=run_month,
+                logger=logger,
+            )
+        except Exception as upload_error:
+            logger.warning("Screenshot upload step failed: %s", upload_error)
 
     summary["runtime_seconds"] = time.time() - start_time
 
@@ -189,7 +212,7 @@ def _clear_row_outputs(df, index):
         df.at[index, column] = ""
 
 
-def _process_row(df, index, row, drug_page, logger):
+def _process_row(df, index, row, drug_page, logger, screenshots_dir):
     drug_id = str(row.get("薬価基準収載医薬品コード", "")).strip()
     max_retry = 3
 
@@ -208,9 +231,17 @@ def _process_row(df, index, row, drug_page, logger):
                 logger.warning("%s → NOT FOUND", drug_id)
                 return "Not Found"
 
-            capture_product_screenshot(drug_page.page, drug_id, logger=logger)
-
             web_data = drug_page.extract_details(drug_id)
+
+            capture_product_screenshot(
+                drug_page.page,
+                drug_id,
+                brand=(web_data.get("brand_en") or web_data.get("brand")),
+                company=web_data.get("company"),
+                base_dir=screenshots_dir,
+                logger=logger,
+            )
+
             status, remarks = validate_row(
                 {
                     "B": row.get("薬価基準収載医薬品コード"),

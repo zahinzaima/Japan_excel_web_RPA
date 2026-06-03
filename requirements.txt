@@ -9,3 +9,4 @@ python-dotenv
 pyautogui
 deep-translator
 Pillow
+google-cloud-storage

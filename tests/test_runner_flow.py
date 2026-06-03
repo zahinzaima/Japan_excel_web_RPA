@@ -275,3 +275,40 @@ def test_resolve_errors_retries_only_error_rows(tmp_path, monkeypatch):
     assert sheet_a.cell(2, status_col).value == "Found"
     assert sheet_a.cell(2, remarks_col).value == "All Match"
     assert sheet_a.cell(3, status_col).value == "Not Found"
+
+
+def test_run_invokes_screenshot_upload_and_records_count(tmp_path, monkeypatch):
+    input_file = tmp_path / "input.xlsx"
+    checkpoint_root = tmp_path / "checkpoints"
+    output_dir = tmp_path / "output"
+    create_input_workbook(input_file)
+
+    FakeDrugPage.dataset = {}
+    FakeDrugPage.no_result_codes = {"1111", "2222", "3333"}
+    monkeypatch.setattr("japan.runner.translate_company", lambda text: text)
+
+    upload_calls = {}
+
+    def fake_upload(screenshots_dir, trace_id, year, month, logger=None):
+        upload_calls.update(
+            screenshots_dir=screenshots_dir, trace_id=trace_id, year=year, month=month
+        )
+        return 7
+
+    monkeypatch.setattr("japan.runner.upload_screenshots", fake_upload)
+
+    summary = run_validation(
+        mode="clean-run",
+        input_file=input_file,
+        checkpoint_root=checkpoint_root,
+        output_dir=output_dir,
+        autosave_every=10,
+        browser_factory=fake_browser_factory,
+        drug_page_cls=FakeDrugPage,
+        logger=make_logger(),
+    )
+
+    assert summary["screenshots_uploaded"] == 7
+    assert upload_calls["trace_id"] == summary["trace_id"]
+    assert upload_calls["screenshots_dir"].name == summary["trace_id"]
+    assert upload_calls["year"] and upload_calls["month"]
