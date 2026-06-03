@@ -33,6 +33,21 @@ def build_object_name(relative_path, trace_id, year, month, country=None):
     return f"{base.strip('/')}/{relative_path}"
 
 
+def build_gs_uri(relative_path, trace_id, year, month, country=None):
+    """Return the canonical gs:// URI for a screenshot (use with gsutil/SDK)."""
+    object_name = build_object_name(relative_path, trace_id, year, month, country=country)
+    return f"gs://{config.GCS_BUCKET_NAME}/{object_name}"
+
+
+def build_console_url(relative_path, trace_id, year, month, country=None):
+    """Return a browser-clickable URL for a screenshot.
+
+    Opens the object for anyone signed in with read access to the bucket.
+    """
+    object_name = build_object_name(relative_path, trace_id, year, month, country=country)
+    return f"https://storage.cloud.google.com/{config.GCS_BUCKET_NAME}/{object_name}"
+
+
 def upload_screenshots(
     screenshots_dir,
     trace_id,

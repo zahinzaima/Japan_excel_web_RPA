@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
+from openpyxl.styles import Font, PatternFill
 
 from japan import config
 
@@ -39,6 +39,7 @@ VALIDATION_COLUMNS = [
     "brand_dosage",
     "manufacture_name",
     "atc_code",
+    "screenshot_url",
 ]
 
 
@@ -136,6 +137,8 @@ def format_excel_output(output_file):
         fill_type="solid",
     )
 
+    link_font = Font(color="0563C1", underline="single")
+
     for ws in wb.worksheets:
         headers = [cell.value for cell in ws[1]]
 
@@ -144,6 +147,9 @@ def format_excel_output(output_file):
 
         remarks_col = headers.index("validation_remarks") + 1
         status_col = headers.index("web_status") + 1
+        screenshot_col = (
+            headers.index("screenshot_url") + 1 if "screenshot_url" in headers else None
+        )
 
         for row in range(2, ws.max_row + 1):
             remarks_cell = ws.cell(row=row, column=remarks_col)
@@ -158,6 +164,13 @@ def format_excel_output(output_file):
                 status_cell.fill = green_fill
             elif status_cell.value == "Not Found":
                 status_cell.fill = red_fill
+
+            if screenshot_col is not None:
+                screenshot_cell = ws.cell(row=row, column=screenshot_col)
+                url = screenshot_cell.value
+                if isinstance(url, str) and url.startswith("http"):
+                    screenshot_cell.hyperlink = url
+                    screenshot_cell.font = link_font
 
     wb.save(output_path)
 

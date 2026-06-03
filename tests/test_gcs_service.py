@@ -98,6 +98,22 @@ def test_build_object_name_matches_requested_pattern(monkeypatch):
     )
 
 
+def test_build_console_url_and_gs_uri(monkeypatch):
+    monkeypatch.setattr(config, "GCS_ROOT_PREFIX", "rpa")
+    monkeypatch.setattr(config, "COUNTRY_NAME", "Japan")
+    monkeypatch.setattr(config, "GCS_BUCKET_NAME", "app_modernization_v2_dev")
+
+    rel = "1234567/Medicine=[Brand]_Company=[ACME].png"
+    assert gcs_service.build_console_url(rel, "tid", "2026", "06") == (
+        "https://storage.cloud.google.com/app_modernization_v2_dev/"
+        "rpa/Japan/2026/06/tid/screenshots/1234567/Medicine=[Brand]_Company=[ACME].png"
+    )
+    assert gcs_service.build_gs_uri(rel, "tid", "2026", "06") == (
+        "gs://app_modernization_v2_dev/"
+        "rpa/Japan/2026/06/tid/screenshots/1234567/Medicine=[Brand]_Company=[ACME].png"
+    )
+
+
 def test_disabled_upload_is_a_noop(tmp_path, monkeypatch):
     screenshots_dir = tmp_path / "run"
     create_screenshots(screenshots_dir)

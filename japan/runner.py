@@ -1,6 +1,7 @@
 import time
 import uuid
 from datetime import datetime
+from pathlib import Path
 
 from japan import config
 from japan.pages.drug_page import DrugPage
@@ -13,7 +14,7 @@ from japan.services.checkpoint_service import (
     save_sheet_checkpoint,
 )
 from japan.services.excel_service import export_to_excel
-from japan.services.gcs_service import upload_screenshots
+from japan.services.gcs_service import build_console_url, upload_screenshots
 from japan.services.normalization_service import company_match
 from japan.services.screenshot_service import capture_product_screenshot
 from japan.services.translation_service import flush_translation_cache, translate_company
@@ -35,6 +36,7 @@ DERIVED_COLUMNS = [
     "brand_dosage",
     "manufacture_name",
     "atc_code",
+    "screenshot_url",
 ]
 
 
@@ -129,7 +131,15 @@ def run_validation(
 
                     try:
                         result = _process_row(
-                            df, index, row, drug_page, logger, run_screenshots_dir
+                            df,
+                            index,
+                            row,
+                            drug_page,
+                            logger,
+                            run_screenshots_dir,
+                            trace_id,
+                            run_year,
+                            run_month,
                         )
                     except Exception as row_error:
                         summary["errors"] += 1
@@ -212,7 +222,7 @@ def _clear_row_outputs(df, index):
         df.at[index, column] = ""
 
 
-def _process_row(df, index, row, drug_page, logger, screenshots_dir):
+def _process_row(df, index, row, drug_page, logger, screenshots_dir, trace_id, year, month):
     drug_id = str(row.get("薬価基準収載医薬品コード", "")).strip()
     max_retry = 3
 
@@ -233,7 +243,7 @@ def _process_row(df, index, row, drug_page, logger, screenshots_dir):
 
             web_data = drug_page.extract_details(drug_id)
 
-            capture_product_screenshot(
+            screenshot_path = capture_product_screenshot(
                 drug_page.page,
                 drug_id,
                 brand=(web_data.get("brand_en") or web_data.get("brand")),
@@ -241,6 +251,11 @@ def _process_row(df, index, row, drug_page, logger, screenshots_dir):
                 base_dir=screenshots_dir,
                 logger=logger,
             )
+            if screenshot_path:
+                relative = Path(screenshot_path).relative_to(screenshots_dir).as_posix()
+                df.at[index, "screenshot_url"] = build_console_url(
+                    relative, trace_id, year, month
+                )
 
             status, remarks = validate_row(
                 {
