@@ -63,7 +63,7 @@ def capture_product_screenshot(page, drug_id, brand, company, base_dir, logger=N
                 )
             return path
 
-        _resize_to_width(image_bytes, config.SCREENSHOT_WIDTH).save(path, format="PNG")
+        _save_png(_resize_to_width(image_bytes, config.SCREENSHOT_WIDTH), path)
         if logger:
             logger.info("Screenshot saved: %s", path)
         return path
@@ -80,3 +80,18 @@ def _resize_to_width(image_bytes, width):
         return image
     height = round(image.height * width / image.width)
     return image.resize((width, height), Image.LANCZOS)
+
+
+def _save_png(image, path):
+    """Save ``image`` as PNG, quantized to a small palette to cut file size.
+
+    Web pages are mostly flat colors plus text, so reducing to a few-hundred-color
+    palette is visually lossless yet ~80% smaller than a truecolor PNG. Setting
+    ``SCREENSHOT_PNG_COLORS`` to 0 keeps the original truecolor PNG.
+    """
+    colors = config.SCREENSHOT_PNG_COLORS
+    if colors and colors > 0:
+        # FASTOCTREE is the only quantizer that also accepts RGBA; convert to RGB
+        # first since screenshots are opaque, keeping the palette focused on color.
+        image = image.convert("RGB").quantize(colors=colors, method=Image.FASTOCTREE)
+    image.save(path, format="PNG", optimize=True)
