@@ -18,6 +18,7 @@ def runtime_page(headless=True, slow_mo=0):
         )
         context = browser.new_context(
             viewport={"width": 1600, "height": 900},
+            device_scale_factor=2,
             ignore_https_errors=True,
         )
         page = context.new_page()

@@ -26,7 +26,16 @@ CHECKPOINT_SAVE_INTERVAL = 100
 # Screenshots: capture every product page that is opened, save as a
 # 720px-wide PNG organized into year/month folders (screenshots/YYYY/MM/).
 ENABLE_SCREENSHOTS = True
-SCREENSHOT_WIDTH = 720
+# Width of the saved screenshot PNGs. Larger = sharper, more legible text at the
+# cost of bigger files. Pages are rendered at 2x DPI (see runtime.py), so the
+# capture is downscaled to this width as crisp supersampling. Override with the
+# SCREENSHOT_WIDTH env var.
+SCREENSHOT_WIDTH = int(os.getenv("SCREENSHOT_WIDTH", "1440"))
+# Saved PNGs are quantized to this many colors (palette PNG) to keep file size
+# small without dropping resolution. Web pages are mostly flat colors + text, so
+# 256 colors stays visually lossless (~80% smaller than truecolor PNG). Set to 0
+# to disable quantization. Override with the SCREENSHOT_PNG_COLORS env var.
+SCREENSHOT_PNG_COLORS = int(os.getenv("SCREENSHOT_PNG_COLORS", "256"))
 
 # Google Cloud Storage: at the end of a run, every captured screenshot is
 # batch-uploaded to GCS. Authentication uses Application Default Credentials
